@@ -1,11 +1,6 @@
 """
-Matric Number: A0000000A
+Matric Number: A0251802N
 """
-
-#########################
-# Symbols               #
-#########################
-" σ π ρ δ ɣ × ∪ ∩ - ÷ ⟕ ⊳ "
 
 
 import Parser
@@ -79,9 +74,16 @@ def anti(rel1, rel2, cond):
   attr = rel1.attr + rel2.attr
 
   #### rel1 (left-anti-join)[cond] rel2
-  # Write your answer here #
-
-  ##########################
+  for row1 in rel1.data:
+    found = False
+    for row2 in rel2.data:
+      combined_rows = row1 + row2
+      if cond.eval(combined_rows, attr):
+        found = True
+        break
+    if not found:
+      null_cols = [None] * len(rel2.attr)
+      data.append(row1 + null_cols)
 
   return Op.Rel(f'({rel1.name} >[{cond}] {rel2.name})', attr, data)
 
@@ -92,23 +94,68 @@ def anti(rel1, rel2, cond):
 ### Question 1b ###
 
 def div(rel1, rel2):
-  data = []
-  attr = []
-  
   #### rel1 (div) rel2
-  # Write your answer here #
+  
+  data = []
+  attr, cols = Op._subhead(rel1.attr, rel2.attr)
 
-  ##########################
+  diff_cols_index  = [] # index for attrs in rel1 & not in rel2
+  div_cols_index = []   # index for attrs in rel1 & in rel2
+  for col in cols:
+    diff_cols_index.append(rel1.index(col))
+    
+  for pair in rel2.attr:
+    index = rel1.index(pair[0])
+    if index is not None:
+      div_cols_index.append(index)
+  
+  # group by X attributes, collect Y values for each group
+  groups = {}
+  for row in rel1.data:
+    row_values = []
+    for i in diff_cols_index:
+      row_values.append(row[i])
+    row_key = tuple(row_values)  # tuple for dictionary key
+    if row_key not in groups:
+      groups[row_key] = []
+    rel2_row_values = []
+    for i in div_cols_index:
+      rel2_row_values.append(row[i])
+    groups[row_key].append(rel2_row_values)
+  
+  required_vals = []
+  for row in rel2.data:
+    required_vals.append(row)
+  
+  # keeps groups with all required values
+  for key, matched_rows in groups.items():
+    all_found = True
+    for y_val in required_vals:
+      if y_val not in matched_rows:
+        all_found = False
+        break
+    if all_found:
+      data.append(list(key))
 
-  return Op.Rel(f'({rel1.name} \\ {rel2.name})', attr, data)
+  return Op.Rel(f'({rel1.name} ÷ {rel2.name})', attr, data)
 
-###################
-
-
+#########################
+# Symbols               #
+#########################
+" σ π ρ δ ɣ × ∪ ∩ - ÷ ⟕ ⊳ "
 
 ### Question 2a ###
 
-ans2a = ""
+ans2a = (
+  "π[c.first_name, c.last_name]("
+    "ρ(customers,c) "
+    "⨝[c.customerid == d.customerid]("
+      "π[d.customerid, d.name, d.version](ρ(downloads,d)) "
+      "÷ "
+      "π[g.name, g.version](σ[name=='Aerified'](ρ(games,g)))"
+    ")"
+  ")"
+)
 
 ###################
 
@@ -116,7 +163,26 @@ ans2a = ""
 
 ### Question 2b ###
 
-ans2b = ""
+ans2b = (
+  "π[c1.first_name, c1.last_name]("
+    "ρ(customers,c1) "
+    "⨝[c1.customerid == c2.customerid]("
+      "π[c2.customerid](ρ(customers,c2)) "
+      "- "
+      "π[c3.customerid]("
+        "("
+          "π[c3.customerid, g.name, g.version]("
+            "ρ(customers,c3) "
+            "× "
+            "π[g.name, g.version](σ[g.name == 'Aerified'](ρ(games,g)))"
+          ") "
+          "- "
+          "π[d.customerid, d.name, d.version](ρ(downloads,d))"
+        ")"
+      ")"
+    ")"
+  ")"
+)
 
 ###################
 
@@ -124,7 +190,23 @@ ans2b = ""
 
 ### Question 2c ###
 
-ans2c = ""
+ans2c = (
+  "π[c1.first_name, c1.last_name]("
+    "ρ(customers,c1) "
+    "⨝[c1.customerid == c2.customerid]("
+      "π[c2.customerid](ρ(customers,c2)) "
+      "⊳[c2.customerid == c3.customerid]("
+        "("
+          "π[c3.customerid](ρ(customers,c3)) "
+          "× "
+          "π[g.name, g.version](σ[g.name == 'Aerified'](ρ(games,g)))"
+        ") "
+        "⊳[c3.customerid == d.customerid /\\ g.name == d.name /\\ g.version == d.version]"
+        "π[d.customerid, d.name, d.version](σ[d.name == 'Aerified'](ρ(downloads,d)))"
+      ")"
+    ")"
+  ")"
+)
 
 ###################
 
